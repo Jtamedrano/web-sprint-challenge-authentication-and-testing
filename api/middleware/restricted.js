@@ -1,5 +1,22 @@
+const jwt = require("jsonwebtoken");
+
 module.exports = (req, res, next) => {
-  next();
+  const { authorization } = req.headers;
+  if (!authorization) {
+    res.status(400).json({ message: "token required" });
+    return;
+  }
+
+  try {
+    const info = jwt.verify(authorization, "supersecret");
+    if (info.iat - Date.now() > 0 || !info.iat) {
+      res.status(400).json({ message: "token invalid" });
+      return;
+    }
+    next();
+  } catch (err) {
+    res.status(400).json({ message: "token invalid" });
+  }
   /*
     IMPLEMENT
 

@@ -18,6 +18,7 @@ beforeEach(async () => {
 
 const regLink = "/api/auth/register";
 const loginLink = "/api/auth/login";
+const jokesLink = "/api/jokes";
 
 // Write your tests here
 test("sanity", () => {
@@ -62,7 +63,6 @@ describe("server.js", () => {
     });
     it("logs user in successfully", async () => {
       const res = await request(server).post(loginLink).send(userC);
-      console.log(res.body);
       expect(res.body).toHaveProperty("message", "welcome, JesseMedrano");
       expect(res.body).toHaveProperty("token");
     });
@@ -90,10 +90,42 @@ describe("server.js", () => {
         .send({ ...userC, password: "123" });
       expect(res.body).toMatchObject({ message: "invalid credentials" });
     });
-    // 3- On FAILED login due to `username` or `password` missing from the request body,
-    //   the response body should include a string exactly as follows: "username and password required".
+  });
+  describe("Get jokes", () => {
+    beforeEach(async () => {
+      await db("users").truncate();
+      await request(server).post(regLink).send(userC);
+    });
+    /*
+    IMPLEMENT
 
-    // 4- On FAILED login due to `username` not existing in the db, or `password` being incorrect,
-    //   the response body should include a string exactly as follows: "invalid credentials".
+    1- On valid token in the Authorization header, call next.
+
+    2- On missing token in the Authorization header,
+      the response body should include a string exactly as follows: "token required".
+
+    3- On invalid or expired token in the Authorization header,
+      the response body should include a string exactly as follows: "token invalid".
+  */
+    it("will get jokes", async () => {
+      const login = await request(server).post(loginLink).send(userC);
+      const req = await request(server)
+        .get(jokesLink)
+        .set("Authorization", login.body.token);
+      console.log(req.body);
+      expect(req.body).toHaveLength(3);
+    });
+    it("will not get jokes without auth", async () => {
+      const req = await request(server).get(jokesLink);
+      expect(req.body).toMatchObject({ message: "token required" });
+    });
+    it("will not get jokes with altered auth", async () => {
+      const login = await request(server).post(loginLink).send(userC);
+      const req = await request(server)
+        .get(jokesLink)
+        .set("Authorization", login.body.token + "10");
+
+      expect(req.body).toMatchObject({ message: "token invalid" });
+    });
   });
 });
